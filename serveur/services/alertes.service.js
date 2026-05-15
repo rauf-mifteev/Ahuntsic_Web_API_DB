@@ -1,54 +1,75 @@
 /* ============================================================
-   services/alertes.service.js — Etape 2 : migration vers Mongoose
+   services/alertes.service.js — Etape 4 : filtres et pagination
    ------------------------------------------------------------
-   Le tableau en memoire est abandonne. Toutes les operations
-   utilisent desormais le modele Mongoose Alerte.
+   lister() est completement reecrite. Elle utilise desormais
+   construireOptions() pour appliquer tous les filtres, la
+   recherche, le tri et la pagination, puis retourne l'enveloppe
+   paginee { donnees, total, page, limit, pages }.
 
-   Changements importants :
-     - Les identifiants sont maintenant des ObjectId MongoDB, pas
-       des entiers. Le controleur passera req.params.id tel quel
-       et Mongoose lancera une CastError si l'id est mal forme.
-     - resoudre() lance une erreur nommee "DejaResolue" au lieu
-       de retourner { dejaResolue: true }. Le controleur capte
-       cette erreur et repond 400. 
-     - resolueAt est mis a new Date() lors de la resolution.
-     - lister() accepte maintenant l'objet query complet. Pour
-       l'instant, seul le filtre ?niveau= est gere. 
+   Parametres acceptes par lister() :
+     niveau  : filtre exact (valide par le controleur avant d'arriver ici)
+     type    : filtre exact (normalise en minuscules)
+     resolue : "true" | "false" -> converti en booleen
+     q       : recherche regex insensible a la casse sur message
+     since   : date ISO -> horodatage >= since
+     until   : date ISO -> horodatage <= until
+     sort    : horodatage | niveau | createdAt  (defaut: horodatage)
+     order   : asc | desc  (defaut: desc)
+     page    : entier >= 1  (defaut: 1)
+     limit   : entier 1..100  (defaut: 10)
+
    ============================================================ */
 
 const Alerte = require("../modeles/Alerte");
+const { construireOptions, enveloppePaginee } = require("./requete");
 
 const NIVEAUX_AUTORISES = ["info", "avertissement", "critique"];
 
 
-/* ---- GET /api/alertes -------------------------------------- */
+/* ---- GET /api/alertes (avec filtres et pagination) --------- */
 
 async function lister(query = {}) {
-  const { niveau } = query;
 
-  const filtre = {};
-  if (niveau) filtre.niveau = niveau;
+  // Normaliser le type en minuscules si present, pour que le
+  // filtre correspond au schema (qui stocke type en lowercase).
+  const queryNormalisee = { ...query };
+  if (queryNormalisee.type) {
+    queryNormalisee.type = queryNormalisee.type.toLowerCase();
+  }
 
-  // L'interface attend toujours une enveloppe paginee :
-  //   { donnees, total, page, limit, pages }
-  // On retourne donc cette structure des maintenant, meme sans
-  // vraie pagination. 
-  const donnees = await Alerte.find(filtre).sort({ horodatage: -1 });
-  return {
-    donnees,
-    total:  donnees.length,
-    page:   1,
-    limit:  donnees.length || 10,
-    pages:  1
-  };
+  const { filtre, tri, page, limit, skip } = construireOptions(queryNormalisee, {
+    champsFiltrables: ["type", "niveau"],  // filtres exacts
+    champsRecherche:  ["message"],         // recherche ?q=
+    champDate:        "horodatage",        // plage ?since= ?until=
+    triParDefaut:     "horodatage",
+    ordreParDefaut:   "desc",
+    limitParDefaut:   10                   // 10 par defaut
+  });
+
+  // Le champ resolue est booleen : il faut convertir la chaine
+  // "true"/"false" manuellement, car construireOptions fait des
+  // filtres exacts sur des chaines.
+  if (query.resolue === "true") {
+    filtre.resolue = true;
+  } else if (query.resolue === "false") {
+    filtre.resolue = false;
+  }
+
+  // Deux requetes en parallele : les donnees et le total.
+  // Promise.all les lance simultanement, ce qui est plus rapide
+  // que de les executer l'une apres l'autre.
+  const [donnees, total] = await Promise.all([
+    Alerte.find(filtre).sort(tri).skip(skip).limit(limit),
+    Alerte.countDocuments(filtre)
+  ]);
+
+  return enveloppePaginee(donnees, total, page, limit);
 }
 
 
 /* ---- GET /api/alertes/:id ---------------------------------- */
 
 async function obtenirParId(id) {
-  // findById lance une CastError si id n'est pas un ObjectId valide.
-  // Le controleur attrape cette erreur et repond 400.
   return Alerte.findById(id);
 }
 
@@ -56,11 +77,6 @@ async function obtenirParId(id) {
 /* ---- POST /api/alertes ------------------------------------- */
 
 async function creer({ source, type, niveau, message }) {
-  // Mongoose valide les champs et lance une ValidationError si
-  // quelque chose ne respecte pas le schema.
-  // On passe seulement les quatre champs du client, horodatage,
-  // resolue, resolueAt, createdAt et updatedAt sont generes par
-  // le schema.
   return Alerte.create({ source, type, niveau, message });
 }
 
@@ -89,7 +105,6 @@ async function resoudre(id) {
 /* ---- DELETE /api/alertes/:id ------------------------------ */
 
 async function supprimer(id) {
-  // Retourne le document supprime, ou null si introuvable.
   return Alerte.findByIdAndDelete(id);
 }
 
