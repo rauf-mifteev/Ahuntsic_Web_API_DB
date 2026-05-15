@@ -1,17 +1,13 @@
 /* ============================================================
-   controleurs/alertes.controleur.js — Etape 2
+   controleurs/alertes.controleur.js — Etape 3
    ------------------------------------------------------------
-   Deux changements importants par rapport a l'etape 1 :
-
-     1. La validation manuelle du POST est supprimee. Mongoose
-        la fait via le schema. En cas d'erreur, il lance 
-	une ValidationError que l'on traduit en 400.
-
-     2. Chaque fonction gere les erreurs Mongoose directement
-        dans son bloc catch. 
+   Maintenant que erreurs.js est complet, tous les blocs catch
+   deleguent a repondreErreur. Le controleur reste concentre
+   sur sa seule responsabilite : lire req, appeler le service,
+   ecrire res.
    ============================================================ */
 
-const alertesService = require("../services/alertes.service");
+const alertesService  = require("../services/alertes.service");
 const { repondreErreur } = require("./erreurs");
 
 const { NIVEAUX_AUTORISES } = alertesService;
@@ -23,6 +19,10 @@ async function lister(req, res) {
   try {
     const { niveau } = req.query;
 
+    // Validation metier specifique : le parametre niveau doit
+    // appartenir a l'enum. Ce n'est pas une CastError ni une
+    // ValidationError Mongoose, c'est une validation de parametre
+    // de requete -> on la gere directement dans le controleur.
     if (niveau !== undefined && niveau !== "" && !NIVEAUX_AUTORISES.includes(niveau)) {
       return res.status(400).json({
         message:
@@ -48,10 +48,6 @@ async function obtenir(req, res) {
     }
     res.status(200).json(alerte);
   } catch (erreur) {
-    // CastError : l'id fourni n'est pas un ObjectId valide -> 400
-    if (erreur.name === "CastError") {
-      return res.status(400).json({ message: "Identifiant invalide." });
-    }
     repondreErreur(res, erreur, "GET /api/alertes/:id");
   }
 }
@@ -62,15 +58,9 @@ async function obtenir(req, res) {
 async function creer(req, res) {
   try {
     const { source, type, niveau, message } = req.body || {};
-    // On ne passe que les quatre champs du client. 
     const alerte = await alertesService.creer({ source, type, niveau, message });
     res.status(201).json({ message: "Alerte ajoutee.", alerte });
   } catch (erreur) {
-    // ValidationError : un ou plusieurs champs violent le schema
-    if (erreur.name === "ValidationError") {
-      const messages = Object.values(erreur.errors).map((e) => e.message);
-      return res.status(400).json({ message: messages.join(" ") });
-    }
     repondreErreur(res, erreur, "POST /api/alertes");
   }
 }
@@ -86,12 +76,6 @@ async function resoudre(req, res) {
     }
     res.status(200).json(alerte);
   } catch (erreur) {
-    if (erreur.name === "CastError") {
-      return res.status(400).json({ message: "Identifiant invalide." });
-    }
-    if (erreur.name === "DejaResolue") {
-      return res.status(400).json({ message: erreur.message });
-    }
     repondreErreur(res, erreur, "PATCH /api/alertes/:id/resolue");
   }
 }
@@ -107,9 +91,6 @@ async function supprimer(req, res) {
     }
     res.status(200).json({ message: "Alerte supprimee.", id: alerte._id.toString() });
   } catch (erreur) {
-    if (erreur.name === "CastError") {
-      return res.status(400).json({ message: "Identifiant invalide." });
-    }
     repondreErreur(res, erreur, "DELETE /api/alertes/:id");
   }
 }
