@@ -15,7 +15,7 @@ L'interface web est fournie et n'a pas été modifiée. Le travail porte entièr
 | **Étape 3** | **Gestion d'erreurs centralisée** : le helper `repondreErreur()` traduit `ValidationError`, `CastError` et les erreurs métier en codes HTTP appropriés. | `controleurs/erreurs.js`, codes 400 / 404 / 409 / 500 |
 | **Étape 4** | **Filtres, recherche et pagination** : `GET /api/alertes` accepte `?niveau=`, `?type=`, `?resolue=`, `?q=`, `?since=`, `?until=`, `?sort=`, `?order=`, `?page=`, `?limit=` et retourne une enveloppe paginée. | `req.query`, regex MongoDB, `Promise.all`, `skip` / `limit` |
 | **Étape 5** | **Route PUT** : remplacement complet d'une alerte existante avec `findByIdAndUpdate` et `overwrite: true`. | `PUT` vs `PATCH`, `runValidators: true` |
-| **Étape 6** | **Polissage** : README, `.gitignore`. | Documentation, bonnes pratiques |
+| **Étape 6** | **Polissage** : README, Insomnia, `.gitignore`. | Documentation, bonnes pratiques |
 
 ## Prérequis
 
@@ -145,7 +145,10 @@ serveur/
 ├── routes/
 │   └── alertes.routes.js      <- câblage URL -> contrôleur
 └── donnees/
-    └── seed.js                <- script d'amorçage de la base
+│   └── seed.js                <- script d'amorçage de la base
+├── tests-insomnia/
+    └── collection-alertes.json      <- tests Insomnia format JSON
+    └── collection-alertes.yaml      <- tests Insomnia format YAML
 ```
 
 ## Variables d'environnement
