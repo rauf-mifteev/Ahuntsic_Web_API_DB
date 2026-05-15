@@ -1,0 +1,282 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Scratch Pad
+meta:
+  id: wrk_scratchpad
+  created: 1776815493454
+  modified: 1776815493454
+  description: ""
+collection:
+  - url: http://localhost:3000/api/alertes
+    name: Add alert with JSON
+    meta:
+      id: req_44db55aab01147c688ddd57437cca9c2
+      created: 1778876000507
+      modified: 1778876109407
+      isPrivate: false
+      description: ""
+      sortKey: -1778876000507
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "source": "Serveur NAS",
+          "type": "stockage",
+          "niveau": "avertissement",
+          "message": "Espace disque faible (85%)"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes/6a077e9f3129d117e6d09a8d
+    name: Show alert by ID
+    meta:
+      id: req_312afb47319e4cde8607c5cffcc28c4d
+      created: 1778876134139
+      modified: 1778876181666
+      isPrivate: false
+      description: ""
+      sortKey: -1778876134139
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes/6a077e9f3129d117e6d09a8d
+    name: Replace the Alert by ID
+    meta:
+      id: req_bcf68f52bdff4b0fa97a16dd13d0a764
+      created: 1778876333087
+      modified: 1778876823193
+      isPrivate: false
+      description: ""
+      sortKey: -1778876333087
+    method: PUT
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "source": "Serveur NAS (Remplacé)",
+          "type": "stockage",
+          "niveau": "critique",
+          "message": "Espace disque saturé !"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes/6a077e9f3129d117e6d09a8d/resolue
+    name: Resolve the Alert by ID
+    meta:
+      id: req_b9d61fda71384108976e3c9d4e2409a5
+      created: 1778876851372
+      modified: 1778876933159
+      isPrivate: false
+      description: ""
+      sortKey: -1778876851372
+    method: PATCH
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes?page=1&limit=2&sort=horodatage&order=desc
+    name: Test Pagination & Sorting
+    meta:
+      id: req_08ac0dfc2b294039a5755c571b41d279
+      created: 1778876972700
+      modified: 1778877001055
+      isPrivate: false
+      description: ""
+      sortKey: -1778876972700
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes?q=espace
+    name: Test Text Search
+    meta:
+      id: req_c84e72144af94c2a969d5a93ecbbdbbc
+      created: 1778877034557
+      modified: 1778877057017
+      isPrivate: false
+      description: ""
+      sortKey: -1778877034557
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes?niveau=critique
+    name: Test Exact Filter
+    meta:
+      id: req_c24d5121f5b84b768488a59452c075bd
+      created: 1778877084144
+      modified: 1778877102668
+      isPrivate: false
+      description: ""
+      sortKey: -1778877084144
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes
+    name: Test 400 Missing Fields
+    meta:
+      id: req_82e775f880e0436cbec59cc222c6d9e2
+      created: 1778877178080
+      modified: 1778877224211
+      isPrivate: false
+      description: ""
+      sortKey: -1778877178080
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "source": "Test Incomplet"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes/000000000000000000000000
+    name: Test 404 Not Found
+    meta:
+      id: req_286204f032dd4cd49037e699e1b6216a
+      created: 1778877252413
+      modified: 1778877275404
+      isPrivate: false
+      description: ""
+      sortKey: -1778877252413
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://localhost:3000/api/alertes/6a077e9f3129d117e6d09a8d
+    name: Delete the Alert by ID
+    meta:
+      id: req_2fb059a008f143148cb69e8ba0ff9a15
+      created: 1778877304980
+      modified: 1778877382441
+      isPrivate: false
+      description: ""
+      sortKey: -1778877304980
+    method: DELETE
+    headers:
+      - name: User-Agent
+        value: insomnia/12.5.0
+        description: ""
+        disabled: false
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1776815537423
+    modified: 1776815537423
+environments:
+  name: Base Environment
+  meta:
+    id: env_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1776815537384
+    modified: 1776815537384
+    isPrivate: false
