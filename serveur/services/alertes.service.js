@@ -1,23 +1,18 @@
 /* ============================================================
-   services/alertes.service.js — Etape 4 : filtres et pagination
+   services/alertes.service.js — Etape 5 : ajout de remplacer()
    ------------------------------------------------------------
-   lister() est completement reecrite. Elle utilise desormais
-   construireOptions() pour appliquer tous les filtres, la
-   recherche, le tri et la pagination, puis retourne l'enveloppe
-   paginee { donnees, total, page, limit, pages }.
+   Une seule fonction ajoutee : remplacer(), utilisee par PUT.
 
-   Parametres acceptes par lister() :
-     niveau  : filtre exact (valide par le controleur avant d'arriver ici)
-     type    : filtre exact (normalise en minuscules)
-     resolue : "true" | "false" -> converti en booleen
-     q       : recherche regex insensible a la casse sur message
-     since   : date ISO -> horodatage >= since
-     until   : date ISO -> horodatage <= until
-     sort    : horodatage | niveau | createdAt  (defaut: horodatage)
-     order   : asc | desc  (defaut: desc)
-     page    : entier >= 1  (defaut: 1)
-     limit   : entier 1..100  (defaut: 10)
+   findByIdAndUpdate avec les options :
+     new: true          -> retourne le document APRES la mise a jour
+     runValidators: true -> execute les validateurs du schema
+     overwrite: true    -> remplace le document en entier (PUT)
+                           sans cette option, Mongoose ferait un
+                           $set partiel (comportement PATCH)
 
+   On ne passe que source, type, niveau et message. 
+   Les champs horodatage, resolue, resolueAt, createdAt
+   et updatedAt ne sont jamais acceptes du client.
    ============================================================ */
 
 const Alerte = require("../modeles/Alerte");
@@ -26,38 +21,29 @@ const { construireOptions, enveloppePaginee } = require("./requete");
 const NIVEAUX_AUTORISES = ["info", "avertissement", "critique"];
 
 
-/* ---- GET /api/alertes (avec filtres et pagination) --------- */
+/* ---- GET /api/alertes -------------------------------------- */
 
 async function lister(query = {}) {
-
-  // Normaliser le type en minuscules si present, pour que le
-  // filtre correspond au schema (qui stocke type en lowercase).
   const queryNormalisee = { ...query };
   if (queryNormalisee.type) {
     queryNormalisee.type = queryNormalisee.type.toLowerCase();
   }
 
   const { filtre, tri, page, limit, skip } = construireOptions(queryNormalisee, {
-    champsFiltrables: ["type", "niveau"],  // filtres exacts
-    champsRecherche:  ["message"],         // recherche ?q=
-    champDate:        "horodatage",        // plage ?since= ?until=
+    champsFiltrables: ["type", "niveau"],
+    champsRecherche:  ["message"],
+    champDate:        "horodatage",
     triParDefaut:     "horodatage",
     ordreParDefaut:   "desc",
-    limitParDefaut:   10                   // 10 par defaut
+    limitParDefaut:   10
   });
 
-  // Le champ resolue est booleen : il faut convertir la chaine
-  // "true"/"false" manuellement, car construireOptions fait des
-  // filtres exacts sur des chaines.
   if (query.resolue === "true") {
     filtre.resolue = true;
   } else if (query.resolue === "false") {
     filtre.resolue = false;
   }
 
-  // Deux requetes en parallele : les donnees et le total.
-  // Promise.all les lance simultanement, ce qui est plus rapide
-  // que de les executer l'une apres l'autre.
   const [donnees, total] = await Promise.all([
     Alerte.find(filtre).sort(tri).skip(skip).limit(limit),
     Alerte.countDocuments(filtre)
@@ -78,6 +64,20 @@ async function obtenirParId(id) {
 
 async function creer({ source, type, niveau, message }) {
   return Alerte.create({ source, type, niveau, message });
+}
+
+
+/* ---- PUT /api/alertes/:id ---------------------------------- */
+
+async function remplacer(id, { source, type, niveau, message }) {
+  // overwrite: true garantit un remplacement complet du document.
+  // Sans cette option, Mongoose ferait un $set partiel et les
+  // champs absents du corps resteraient inchanges (comportement PATCH).
+  return Alerte.findByIdAndUpdate(
+    id,
+    { source, type, niveau, message },
+    { new: true, runValidators: true, overwrite: true }
+  );
 }
 
 
@@ -114,6 +114,7 @@ module.exports = {
   lister,
   obtenirParId,
   creer,
+  remplacer,
   resoudre,
   supprimer
 };

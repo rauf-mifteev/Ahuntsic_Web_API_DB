@@ -1,17 +1,19 @@
 /* ============================================================
-   controleurs/alertes.controleur.js — Etape 4
+   controleurs/alertes.controleur.js — Etape 5 : ajout de remplacer()
    ------------------------------------------------------------
-   Un seul changement par rapport a l'etape 3 : la fonction
-   lister() passe maintenant l'objet req.query complet au
-   service au lieu d'en extraire seulement "niveau". C'est le
-   service (via construireOptions) qui lit et applique tous les
-   parametres de filtrage, tri et pagination.
+   Une seule fonction ajoutee : remplacer(), appelee par PUT /:id.
 
-   La seule logique qui reste dans le controleur est la
-   validation du parametre ?niveau= : si la valeur n'est pas
-   dans l'enum, on retourne 400 immediatement, avant meme
-   d'appeler le service. 
+   Le corps attendu est identique a celui d'un POST :
+     { source, type, niveau, message }
 
+   Les champs serveur (id, horodatage, resolue, resolueAt,
+   createdAt, updatedAt) sont ignores meme si le client les
+   envoie : on ne destructure que les quatre champs du client.
+
+   Les erreurs possibles sont les memes que pour POST :
+     ValidationError -> 400 (gere par repondreErreur)
+     CastError       -> 400 (id mal forme)
+     null retourne par le service -> 404 (alerte introuvable)
    ============================================================ */
 
 const alertesService     = require("../services/alertes.service");
@@ -33,9 +35,6 @@ async function lister(req, res) {
       });
     }
 
-    // On passe req.query en entier. Le service et requete.js
-    // s'occupent de lire type, resolue, q, since, until, sort,
-    // order, page et limit.
     const resultat = await alertesService.lister(req.query);
     res.status(200).json(resultat);
   } catch (erreur) {
@@ -72,6 +71,24 @@ async function creer(req, res) {
 }
 
 
+/* ---- PUT /api/alertes/:id ---------------------------------- */
+
+async function remplacer(req, res) {
+  try {
+    const { source, type, niveau, message } = req.body || {};
+    const alerte = await alertesService.remplacer(req.params.id, {
+      source, type, niveau, message
+    });
+    if (!alerte) {
+      return res.status(404).json({ message: "Alerte introuvable." });
+    }
+    res.status(200).json({ message: "Alerte remplacee.", alerte });
+  } catch (erreur) {
+    repondreErreur(res, erreur, "PUT /api/alertes/:id");
+  }
+}
+
+
 /* ---- PATCH /api/alertes/:id/resolue ----------------------- */
 
 async function resoudre(req, res) {
@@ -102,4 +119,4 @@ async function supprimer(req, res) {
 }
 
 
-module.exports = { lister, obtenir, creer, resoudre, supprimer };
+module.exports = { lister, obtenir, creer, remplacer, resoudre, supprimer };
