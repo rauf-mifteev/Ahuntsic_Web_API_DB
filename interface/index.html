@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supervision d'alertes — Examen pratique 2</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="entete">
+    <h1>Console de supervision — Alertes (édition persistée)</h1>
+    <p class="sous-titre">
+      420-317-AH — Examen pratique 2 — Interface fournie
+    </p>
+  </header>
+
+  <main class="contenu">
+
+    <!-- ======================================================== -->
+    <!--  SECTION 1 : Filtres, recherche, tri, pagination         -->
+    <!--                                                          -->
+    <!--  L'interface appelle GET /api/alertes avec, selon le     -->
+    <!--  cas, les paramètres :                                   -->
+    <!--    ?niveau=  ?type=  ?resolue=  ?q=                      -->
+    <!--    ?since=   ?until=                                     -->
+    <!--    ?sort=    ?order=                                     -->
+    <!--    ?page=    ?limit=                                     -->
+    <!--                                                          -->
+    <!--  Le serveur DOIT répondre avec une enveloppe paginée :   -->
+    <!--    { donnees, total, page, limit, pages }                -->
+    <!--                                                          -->
+    <!--  L'étudiant NE DOIT PAS modifier ce fichier HTML.        -->
+    <!--  Son travail : écrire le serveur Express + MongoDB.      -->
+    <!-- ======================================================== -->
+    <section class="section">
+      <div class="barre-section">
+        <h2>Alertes</h2>
+        <div class="actions-inline">
+          <span id="info-total" class="label-inline">—</span>
+          <button id="btn-rafraichir" type="button">Rafraîchir</button>
+        </div>
+      </div>
+
+      <form id="form-filtres" class="formulaire-filtres" novalidate>
+        <div class="champ">
+          <label for="filtre-niveau">Niveau</label>
+          <select id="filtre-niveau" name="niveau">
+            <option value="">— Tous —</option>
+            <option value="info">info</option>
+            <option value="avertissement">avertissement</option>
+            <option value="critique">critique</option>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="filtre-type">Type</label>
+          <input
+            id="filtre-type"
+            name="type"
+            type="text"
+            placeholder="cpu, disque, reseau…"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="filtre-resolue">État</label>
+          <select id="filtre-resolue" name="resolue">
+            <option value="">— Toutes —</option>
+            <option value="false">Non résolues</option>
+            <option value="true">Résolues</option>
+          </select>
+        </div>
+
+        <div class="champ champ-large">
+          <label for="filtre-q">Recherche dans le message</label>
+          <input
+            id="filtre-q"
+            name="q"
+            type="text"
+            placeholder="Mot-clé à chercher…"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="filtre-since">Depuis</label>
+          <input id="filtre-since" name="since" type="datetime-local" />
+        </div>
+
+        <div class="champ">
+          <label for="filtre-until">Jusqu'à</label>
+          <input id="filtre-until" name="until" type="datetime-local" />
+        </div>
+
+        <div class="champ">
+          <label for="filtre-sort">Tri</label>
+          <select id="filtre-sort" name="sort">
+            <option value="horodatage">Horodatage</option>
+            <option value="niveau">Niveau</option>
+            <option value="createdAt">Date de création</option>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="filtre-order">Ordre</label>
+          <select id="filtre-order" name="order">
+            <option value="desc">Décroissant</option>
+            <option value="asc">Croissant</option>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="filtre-limit">Taille de page</label>
+          <select id="filtre-limit" name="limit">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+
+        <div class="champ champ-actions">
+          <button type="submit">Appliquer</button>
+          <button type="button" id="btn-reinitialiser" class="btn-secondaire">
+            Réinitialiser
+          </button>
+        </div>
+      </form>
+
+      <div id="liste-alertes" class="grille-alertes">
+        <!-- Les cartes d'alertes sont injectées par app.js. -->
+      </div>
+
+      <div class="barre-pagination">
+        <button id="btn-prec" type="button" class="btn-secondaire" disabled>
+          ← Précédent
+        </button>
+        <span id="info-page" class="label-inline">Page —</span>
+        <button id="btn-suiv" type="button" class="btn-secondaire" disabled>
+          Suivant →
+        </button>
+      </div>
+
+      <p id="message-alertes" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- ======================================================== -->
+    <!--  SECTION 2 : Ajout d'une nouvelle alerte                 -->
+    <!--                                                          -->
+    <!--  Le client envoie : { source, type, niveau, message }    -->
+    <!--                                                          -->
+    <!--  Le SERVEUR est responsable de :                         -->
+    <!--    - générer l'id (ObjectId MongoDB) ;                   -->
+    <!--    - générer l'horodatage et les timestamps ;            -->
+    <!--    - initialiser resolue à false, resolueAt à null ;     -->
+    <!--    - valider les champs via les validateurs Mongoose.    -->
+    <!-- ======================================================== -->
+    <section class="section">
+      <h2>Enregistrer une nouvelle alerte</h2>
+
+      <form id="form-ajout" class="formulaire" novalidate>
+        <div class="champ">
+          <label for="champ-source">Source</label>
+          <input
+            id="champ-source"
+            name="source"
+            type="text"
+            placeholder="Ex. : Serveur web-01"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="champ-type">Type</label>
+          <input
+            id="champ-type"
+            name="type"
+            type="text"
+            placeholder="Ex. : cpu, memoire, disque, reseau, securite"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="champ-niveau">Niveau</label>
+          <select id="champ-niveau" name="niveau">
+            <option value="">— Choisir —</option>
+            <option value="info">info</option>
+            <option value="avertissement">avertissement</option>
+            <option value="critique">critique</option>
+          </select>
+        </div>
+
+        <div class="champ champ-large">
+          <label for="champ-message">Message</label>
+          <input
+            id="champ-message"
+            name="message"
+            type="text"
+            placeholder="Ex. : Utilisation CPU à 95 %"
+          />
+        </div>
+
+        <button type="submit">Enregistrer</button>
+      </form>
+
+      <p id="message-ajout" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+  </main>
+
+  <footer class="pied">
+    <p>Interface fournie — Examen pratique 2</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
