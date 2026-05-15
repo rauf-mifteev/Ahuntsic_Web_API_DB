@@ -1,13 +1,16 @@
 {
-  "name": "supervision-alertes-depart",
+  "name": "serveur-alertes",
   "version": "1.0.0",
-  "description": "Solution de reference de l'examen pratique 1. Sert de point de depart a l'examen pratique 2 (a migrer vers MongoDB).",
+  "description": "Console de supervision d'alertes — examen pratique 2",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "seed": "node donnees/seed.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.24.0"
   }
 }

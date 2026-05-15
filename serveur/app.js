@@ -1,22 +1,22 @@
 /* ============================================================
-   app.js — Solution de référence de TP 1
+   app.js — Etape 2 : connexion MongoDB avant demarrage HTTP
    ------------------------------------------------------------
-   POINT D'ENTRÉE du serveur. Conformément au TP 1,
-   ce fichier se limite au wiring :
-     - middlewares (cors, express.json, journalisation) ;
-     - montage du routeur /api/alertes ;
-     - démarrage du serveur HTTP.
-
-   Toute la logique métier vit dans :
-     - data/alertes.js          (tableau en mémoire + helpers)
-     - routes/alertes.routes.js (les 5 routes)
-
+   Deux changements par rapport a l'etape 1 :
+     1. require("dotenv").config() charge le fichier .env en
+        PREMIER, avant tout autre require qui lirait process.env.
+     2. Le demarrage est maintenant une fonction async. Le serveur
+        HTTP n'ecoute qu'APRES que la connexion MongoDB a reussi.
+        En cas d'echec, process.exit(1) evite qu'un serveur
+        "zombie" accepte des requetes sans base de donnees.
    ============================================================ */
+
+require("dotenv").config();
 
 const express = require("express");
 const cors    = require("cors");
 
-const alertesRoutes = require("./routes/alertes.routes");
+const { connecterBD }  = require("./config/bd");
+const alertesRoutes    = require("./routes/alertes.routes");
 
 const app = express();
 
@@ -28,7 +28,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Journalisation simple : méthode + URL + statut + durée
 app.use((req, res, next) => {
   const debut = Date.now();
   res.on("finish", () => {
@@ -48,20 +47,31 @@ app.use("/api/alertes", alertesRoutes);
 
 
 /* ------------------------------------------------------------
-   Gestion globale des erreurs imprévues
+   Gestion globale des erreurs imprevues
    ------------------------------------------------------------ */
 
 app.use((erreur, req, res, next) => {
-  console.error("Erreur non gérée :", erreur);
+  console.error("Erreur non geree :", erreur);
   res.status(500).json({ message: "Erreur serveur." });
 });
 
 
 /* ------------------------------------------------------------
-   Démarrage
+   Demarrage : on attend la base AVANT d'ecouter le port HTTP
    ------------------------------------------------------------ */
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Serveur en écoute sur http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+
+async function demarrer() {
+  try {
+    await connecterBD(process.env.MONGO_URI);
+    app.listen(PORT, () => {
+      console.log(`Serveur en ecoute sur http://localhost:${PORT}`);
+    });
+  } catch (erreur) {
+    console.error("Demarrage annule :", erreur.message);
+    process.exit(1);
+  }
+}
+
+demarrer();

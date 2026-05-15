@@ -1,53 +1,96 @@
 /* ============================================================
-   services/alertes.service.js — Etape 1 : enveloppe du tableau
+   services/alertes.service.js — Etape 2 : migration vers Mongoose
    ------------------------------------------------------------
-   Ce fichier introduit la couche service. Pour l'instant, il
-   ne fait qu'envelopper les fonctions de data/alertes.js dans
-   des fonctions async. 
+   Le tableau en memoire est abandonne. Toutes les operations
+   utilisent desormais le modele Mongoose Alerte.
+
+   Changements importants :
+     - Les identifiants sont maintenant des ObjectId MongoDB, pas
+       des entiers. Le controleur passera req.params.id tel quel
+       et Mongoose lancera une CastError si l'id est mal forme.
+     - resoudre() lance une erreur nommee "DejaResolue" au lieu
+       de retourner { dejaResolue: true }. Le controleur capte
+       cette erreur et repond 400. 
+     - resolueAt est mis a new Date() lors de la resolution.
+     - lister() accepte maintenant l'objet query complet. Pour
+       l'instant, seul le filtre ?niveau= est gere. 
    ============================================================ */
 
-const data = require("../data/alertes");
+const Alerte = require("../modeles/Alerte");
 
-/* Exporte la liste des niveaux valides pour que le controleur
-   puisse la lire sans importer directement data/alertes.js.    */
-const NIVEAUX_AUTORISES = data.NIVEAUX_AUTORISES;
+const NIVEAUX_AUTORISES = ["info", "avertissement", "critique"];
 
 
-/* Retourne toutes les alertes, filtrees par niveau si fourni.  */
-async function lister(niveau) {
-  return data.lister(niveau);
+/* ---- GET /api/alertes -------------------------------------- */
+
+async function lister(query = {}) {
+  const { niveau } = query;
+
+  const filtre = {};
+  if (niveau) filtre.niveau = niveau;
+
+  // L'interface attend toujours une enveloppe paginee :
+  //   { donnees, total, page, limit, pages }
+  // On retourne donc cette structure des maintenant, meme sans
+  // vraie pagination. 
+  const donnees = await Alerte.find(filtre).sort({ horodatage: -1 });
+  return {
+    donnees,
+    total:  donnees.length,
+    page:   1,
+    limit:  donnees.length || 10,
+    pages:  1
+  };
 }
 
 
-/* Retourne une alerte par son identifiant numerique, ou null.  */
+/* ---- GET /api/alertes/:id ---------------------------------- */
+
 async function obtenirParId(id) {
-  const idNum = parseInt(id, 10);
-  if (Number.isNaN(idNum) || idNum < 1) return null;
-  return data.trouverParId(idNum) || null;
+  // findById lance une CastError si id n'est pas un ObjectId valide.
+  // Le controleur attrape cette erreur et repond 400.
+  return Alerte.findById(id);
 }
 
 
-/* Cree une nouvelle alerte et la retourne.                     */
+/* ---- POST /api/alertes ------------------------------------- */
+
 async function creer({ source, type, niveau, message }) {
-  return data.ajouter({ source, type, niveau, message });
+  // Mongoose valide les champs et lance une ValidationError si
+  // quelque chose ne respecte pas le schema.
+  // On passe seulement les quatre champs du client, horodatage,
+  // resolue, resolueAt, createdAt et updatedAt sont generes par
+  // le schema.
+  return Alerte.create({ source, type, niveau, message });
 }
 
 
-/* Marque une alerte comme resolue.
-   Retourne null si introuvable.
-   Retourne { dejaResolue: true } si deja resolue.              */
+/* ---- PATCH /api/alertes/:id/resolue ----------------------- */
+
 async function resoudre(id) {
-  const idNum = parseInt(id, 10);
-  if (Number.isNaN(idNum) || idNum < 1) return null;
-  return data.resoudre(idNum);
+  const alerte = await Alerte.findById(id);
+
+  if (!alerte) return null;
+
+  if (alerte.resolue) {
+    const e = new Error("Cette alerte est deja resolue.");
+    e.name = "DejaResolue";
+    throw e;
+  }
+
+  alerte.resolue   = true;
+  alerte.resolueAt = new Date();
+  await alerte.save();
+
+  return alerte;
 }
 
 
-/* Supprime une alerte. Retourne true si supprimee, false sinon.*/
+/* ---- DELETE /api/alertes/:id ------------------------------ */
+
 async function supprimer(id) {
-  const idNum = parseInt(id, 10);
-  if (Number.isNaN(idNum) || idNum < 1) return false;
-  return data.supprimer(idNum);
+  // Retourne le document supprime, ou null si introuvable.
+  return Alerte.findByIdAndDelete(id);
 }
 
 
