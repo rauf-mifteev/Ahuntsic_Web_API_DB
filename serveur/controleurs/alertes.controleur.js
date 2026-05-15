@@ -1,13 +1,20 @@
 /* ============================================================
-   controleurs/alertes.controleur.js — Etape 3
+   controleurs/alertes.controleur.js — Etape 4
    ------------------------------------------------------------
-   Maintenant que erreurs.js est complet, tous les blocs catch
-   deleguent a repondreErreur. Le controleur reste concentre
-   sur sa seule responsabilite : lire req, appeler le service,
-   ecrire res.
+   Un seul changement par rapport a l'etape 3 : la fonction
+   lister() passe maintenant l'objet req.query complet au
+   service au lieu d'en extraire seulement "niveau". C'est le
+   service (via construireOptions) qui lit et applique tous les
+   parametres de filtrage, tri et pagination.
+
+   La seule logique qui reste dans le controleur est la
+   validation du parametre ?niveau= : si la valeur n'est pas
+   dans l'enum, on retourne 400 immediatement, avant meme
+   d'appeler le service. 
+
    ============================================================ */
 
-const alertesService  = require("../services/alertes.service");
+const alertesService     = require("../services/alertes.service");
 const { repondreErreur } = require("./erreurs");
 
 const { NIVEAUX_AUTORISES } = alertesService;
@@ -19,10 +26,6 @@ async function lister(req, res) {
   try {
     const { niveau } = req.query;
 
-    // Validation metier specifique : le parametre niveau doit
-    // appartenir a l'enum. Ce n'est pas une CastError ni une
-    // ValidationError Mongoose, c'est une validation de parametre
-    // de requete -> on la gere directement dans le controleur.
     if (niveau !== undefined && niveau !== "" && !NIVEAUX_AUTORISES.includes(niveau)) {
       return res.status(400).json({
         message:
@@ -30,8 +33,11 @@ async function lister(req, res) {
       });
     }
 
-    const alertes = await alertesService.lister(req.query);
-    res.status(200).json(alertes);
+    // On passe req.query en entier. Le service et requete.js
+    // s'occupent de lire type, resolue, q, since, until, sort,
+    // order, page et limit.
+    const resultat = await alertesService.lister(req.query);
+    res.status(200).json(resultat);
   } catch (erreur) {
     repondreErreur(res, erreur, "GET /api/alertes");
   }
